@@ -1,0 +1,17 @@
+# Build artifacts
+obj-*
+dist/
+build/
+*.zip
+*.exe
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Temporary
+*.log
+*.tmp
+scratch/
