@@ -1,0 +1,798 @@
+From 69ffea2ae1dd9d40dbb4f35c05769e3546a29fb4 Mon Sep 17 00:00:00 2001
+From: ColorsOfFractals <ohhhiknowthisone@gmail.com>
+Date: Sat, 12 Sep 2026 23:23:21 -0700
+Subject: [PATCH] Planetarium: establish borderless chrome and orbital window
+ control
+
+---
+ browser/base/content/browser.js          | 357 ++++++++++++++++++++
+ browser/themes/shared/browser-shared.css | 412 +++++++++++++++++++++++
+ 2 files changed, 769 insertions(+)
+
+diff --git a/browser/base/content/browser.js b/browser/base/content/browser.js
+index 0bf9687ededa..f8bcc4a479c1 100644
+--- a/browser/base/content/browser.js
++++ b/browser/base/content/browser.js
+@@ -5248,3 +5248,360 @@ var FirefoxViewHandler = {
+     }
+   },
+ };
++
++
++/* ================================================================
++ * PLANETARIUM_TRANSPORT_V3
++ *
++ * Spatial window controls:
++ *
++ *           Γùë
++ *           Γöé pull
++ *           Γû╝
++ *      ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
++ *       ΓêÆ   Γûí   ├ù
++ *
++ * The UI is created at runtime rather than injected into preprocessed
++ * browser-box markup.
++ * ================================================================= */
++
++(() => {
++  "use strict";
++
++  const HTML_NS = "http://www.w3.org/1999/xhtml";
++
++  function make(tag, id, className = "") {
++    const el = document.createElementNS(HTML_NS, tag);
++
++    if (id) {
++      el.id = id;
++    }
++
++    if (className) {
++      el.className = className;
++    }
++
++    return el;
++  }
++
++  function initPlanetariumTransport() {
++    if (document.getElementById("planetarium-transport-v3")) {
++      return;
++    }
++
++    /* ------------------------------------------------------------
++       DRAG STRIP
++       ------------------------------------------------------------ */
++
++    const dragStrip = make(
++      "div",
++      "planetarium-window-drag-strip"
++    );
++
++    dragStrip.setAttribute(
++      "aria-label",
++      "Drag browser window"
++    );
++
++    /* ------------------------------------------------------------
++       TRANSPORT
++       ------------------------------------------------------------ */
++
++    const transport = make(
++      "div",
++      "planetarium-transport-v3"
++    );
++
++    transport.dataset.open = "false";
++
++    const controls = make(
++      "div",
++      "planetarium-transport-controls"
++    );
++
++    const lens = make(
++      "button",
++      "planetarium-transport-lens"
++    );
++
++    lens.type = "button";
++    lens.title = "Pull down for window controls";
++    lens.setAttribute(
++      "aria-label",
++      "Window controls"
++    );
++
++    const makeControl = (
++      id,
++      symbol,
++      title,
++      action,
++      extraClass = ""
++    ) => {
++      const button = make(
++        "button",
++        id,
++        `planetarium-window-button ${extraClass}`.trim()
++      );
++
++      button.type = "button";
++      button.textContent = symbol;
++      button.title = title;
++      button.setAttribute("aria-label", title);
++
++      button.addEventListener("click", event => {
++        event.stopPropagation();
++        action();
++      });
++
++      return button;
++    };
++
++    const minimize = makeControl(
++      "planetarium-minimize",
++      "ΓêÆ",
++      "Minimize",
++      () => window.minimize()
++    );
++
++    const maximize = makeControl(
++      "planetarium-maximize",
++      "Γûí",
++      "Maximize",
++      () => window.maximize()
++    );
++
++    const restore = makeControl(
++      "planetarium-restore",
++      "Γ¥É",
++      "Restore",
++      () => window.restore()
++    );
++
++    const close = makeControl(
++      "planetarium-close",
++      "├ù",
++      "Close",
++      () => window.close(),
++      "planetarium-close"
++    );
++
++    controls.append(
++      minimize,
++      maximize,
++      restore,
++      close
++    );
++
++    transport.append(
++      controls,
++      lens
++    );
++
++    document.documentElement.append(
++      dragStrip,
++      transport
++    );
++
++    /* ------------------------------------------------------------
++       STATE
++       ------------------------------------------------------------ */
++
++    let dragging = false;
++    let startY = 0;
++    let currentPull = 0;
++    let closeTimer = null;
++
++    const setOpen = open => {
++      transport.dataset.open =
++        open ? "true" : "false";
++
++      lens.setAttribute(
++        "aria-expanded",
++        open ? "true" : "false"
++      );
++    };
++
++    const cancelClose = () => {
++      if (closeTimer) {
++        clearTimeout(closeTimer);
++        closeTimer = null;
++      }
++    };
++
++    const scheduleClose = () => {
++      cancelClose();
++
++      closeTimer = setTimeout(() => {
++        if (
++          !transport.matches(":hover") &&
++          !transport.contains(document.activeElement)
++        ) {
++          setOpen(false);
++        }
++      }, 500);
++    };
++
++    /* ------------------------------------------------------------
++       TAP
++       ------------------------------------------------------------ */
++
++    lens.addEventListener("click", event => {
++      /*
++       * pointerup following a real pull marks this flag so the
++       * synthesized click doesn't immediately toggle it shut.
++       */
++      if (lens.dataset.justPulled === "true") {
++        lens.dataset.justPulled = "false";
++        event.preventDefault();
++        return;
++      }
++
++      setOpen(
++        transport.dataset.open !== "true"
++      );
++
++      event.stopPropagation();
++    });
++
++    /* ------------------------------------------------------------
++       PROJECTOR-SCREEN PULL
++       ------------------------------------------------------------ */
++
++    lens.addEventListener("pointerdown", event => {
++      if (event.button !== 0) {
++        return;
++      }
++
++      cancelClose();
++
++      dragging = true;
++      startY = event.clientY;
++      currentPull = 0;
++
++      transport.dataset.pulling = "true";
++
++      lens.setPointerCapture?.(
++        event.pointerId
++      );
++
++      event.preventDefault();
++    });
++
++    lens.addEventListener("pointermove", event => {
++      if (!dragging) {
++        return;
++      }
++
++      currentPull = Math.max(
++        0,
++        Math.min(
++          70,
++          event.clientY - startY
++        )
++      );
++
++      transport.style.setProperty(
++        "--planetarium-pull",
++        `${currentPull}px`
++      );
++
++      /*
++       * Capsule starts blooming before release.
++       */
++      if (currentPull >= 12) {
++        setOpen(true);
++      }
++    });
++
++    lens.addEventListener("pointerup", event => {
++      if (!dragging) {
++        return;
++      }
++
++      dragging = false;
++
++      transport.dataset.pulling = "false";
++
++      transport.style.setProperty(
++        "--planetarium-pull",
++        "0px"
++      );
++
++      try {
++        lens.releasePointerCapture?.(
++          event.pointerId
++        );
++      } catch (_) {}
++
++      if (currentPull >= 9) {
++        lens.dataset.justPulled = "true";
++        setOpen(true);
++      }
++
++      currentPull = 0;
++    });
++
++    lens.addEventListener(
++      "pointercancel",
++      () => {
++        dragging = false;
++
++        transport.dataset.pulling =
++          "false";
++
++        transport.style.setProperty(
++          "--planetarium-pull",
++          "0px"
++        );
++      }
++    );
++
++    /* ------------------------------------------------------------
++       AUTO RETRACT
++       ------------------------------------------------------------ */
++
++    transport.addEventListener(
++      "mouseenter",
++      cancelClose
++    );
++
++    transport.addEventListener(
++      "mouseleave",
++      scheduleClose
++    );
++
++    transport.addEventListener(
++      "focusin",
++      cancelClose
++    );
++
++    transport.addEventListener(
++      "focusout",
++      scheduleClose
++    );
++
++    window.addEventListener(
++      "keydown",
++      event => {
++        if (
++          event.key === "Escape" &&
++          transport.dataset.open === "true"
++        ) {
++          setOpen(false);
++          lens.focus();
++        }
++      }
++    );
++  }
++
++  if (document.readyState === "complete") {
++    initPlanetariumTransport();
++  } else {
++    window.addEventListener(
++      "load",
++      initPlanetariumTransport,
++      { once: true }
++    );
++  }
++})();
+diff --git a/browser/themes/shared/browser-shared.css b/browser/themes/shared/browser-shared.css
+index 5953b83ccf49..c8485e048992 100644
+--- a/browser/themes/shared/browser-shared.css
++++ b/browser/themes/shared/browser-shared.css
+@@ -1622,3 +1622,415 @@ popupnotificationcontent {
+   }
+ }
+ 
++
++
++/* ============================================================
++   PLANETARIUM ΓÇö TRANSPORT V3
++   ============================================================ */
++
++
++/* ------------------------------------------------------------
++   PLANETARIUM WINDOW FRAME
++   ------------------------------------------------------------ */
++
++:root:not([inDOMFullscreen]) #browser {
++  border: 1px solid
++    color-mix(
++      in srgb,
++      AccentColor 62%,
++      rgb(92, 216, 255)
++    ) !important;
++
++  box-sizing: border-box !important;
++
++  box-shadow:
++    inset 0 0 0 1px rgba(154, 76, 255, .16),
++    inset 0 0 18px rgba(75, 190, 255, .035) !important;
++}
++
++
++/* ------------------------------------------------------------
++   INVISIBLE WINDOW DRAG REGION
++   ------------------------------------------------------------ */
++
++#planetarium-window-drag-strip {
++  position: fixed;
++
++  top: 0;
++  left: 4px;
++  right: 54px;
++
++  height: 10px;
++
++  z-index: 2147482990;
++
++  -moz-window-dragging: drag;
++
++  cursor: grab;
++
++  background: transparent;
++
++  user-select: none;
++}
++
++#planetarium-window-drag-strip:active {
++  cursor: grabbing;
++}
++
++
++/* ------------------------------------------------------------
++   RETIRE FIREFOX'S OLD CAPTION BUTTON PRESENTATION
++   ------------------------------------------------------------ */
++
++:root[customtitlebar]
++  .titlebar-buttonbox-container {
++  visibility: hidden !important;
++  pointer-events: none !important;
++}
++
++
++/* ------------------------------------------------------------
++   TRANSPORT BODY
++   ------------------------------------------------------------ */
++
++#planetarium-transport-v3 {
++  --planetarium-pull: 0px;
++
++  position: fixed;
++
++  top:
++    calc(
++      10px +
++      var(--planetarium-pull)
++    );
++
++  right: 12px;
++
++  z-index: 2147483000;
++
++  width: 32px;
++  height: 32px;
++
++  overflow: hidden;
++
++  border-radius: 999px;
++
++  border:
++    1px solid
++    rgba(116, 220, 255, .78);
++
++  background:
++    radial-gradient(
++      circle at 35% 28%,
++      rgba(255,255,255,.98) 0 4%,
++      rgba(144,231,255,.94) 8%,
++      rgba(74,115,255,.96) 31%,
++      rgba(151,62,229,.94) 59%,
++      rgba(16,11,41,.99) 83%
++    );
++
++  box-shadow:
++    0 0 8px rgba(89, 211, 255, .64),
++    0 0 20px rgba(161, 77, 255, .40),
++    inset 0 0 8px rgba(255,255,255,.25);
++
++  transition:
++    width 170ms cubic-bezier(.18,.9,.24,1),
++    height 170ms cubic-bezier(.18,.9,.24,1),
++    border-radius 170ms cubic-bezier(.18,.9,.24,1),
++    top 190ms cubic-bezier(.18,.9,.24,1),
++    background 150ms ease,
++    box-shadow 150ms ease;
++}
++
++
++/* Follow the pointer directly while pulling. */
++
++#planetarium-transport-v3[
++  data-pulling="true"
++] {
++  transition:
++    width 150ms cubic-bezier(.18,.9,.24,1),
++    height 150ms cubic-bezier(.18,.9,.24,1),
++    border-radius 150ms cubic-bezier(.18,.9,.24,1),
++    background 120ms ease,
++    box-shadow 120ms ease;
++}
++
++
++/* ------------------------------------------------------------
++   LENS
++   ------------------------------------------------------------ */
++
++#planetarium-transport-lens {
++  appearance: none;
++
++  position: absolute;
++
++  top: 0;
++  right: 0;
++
++  z-index: 5;
++
++  width: 32px;
++  height: 32px;
++
++  padding: 0;
++  margin: 0;
++
++  border: 0;
++  border-radius: 999px;
++
++  background: transparent;
++
++  cursor: ns-resize;
++
++  touch-action: none;
++
++  transition:
++    opacity 110ms ease,
++    transform 160ms cubic-bezier(.18,.9,.24,1);
++}
++
++
++/* Little reflected highlight. */
++
++#planetarium-transport-lens::before {
++  content: "";
++
++  position: absolute;
++
++  left: 7px;
++  top: 6px;
++
++  width: 7px;
++  height: 7px;
++
++  border-radius: 50%;
++
++  background:
++    rgba(255,255,255,.79);
++
++  box-shadow:
++    0 0 5px rgba(255,255,255,.30);
++}
++
++
++/* Projector-screen pull stem. */
++
++#planetarium-transport-lens::after {
++  content: "";
++
++  position: absolute;
++
++  left: 15px;
++  top: 31px;
++
++  width: 2px;
++  height: 9px;
++
++  border-radius: 999px;
++
++  background:
++    linear-gradient(
++      to bottom,
++      rgba(104, 219, 255, .78),
++      rgba(173, 79, 255, .10)
++    );
++
++  pointer-events: none;
++
++  opacity: .65;
++}
++
++
++/* ------------------------------------------------------------
++   DEPLOYED STATE
++   ------------------------------------------------------------ */
++
++#planetarium-transport-v3[
++  data-open="true"
++] {
++  width: 150px;
++  height: 40px;
++
++  border-radius: 22px;
++
++  background:
++    linear-gradient(
++      112deg,
++      rgba(7,14,31,.98),
++      rgba(17,21,55,.98) 46%,
++      rgba(42,16,68,.98)
++    );
++
++  box-shadow:
++    0 0 12px rgba(75,207,255,.54),
++    0 0 26px rgba(172,69,255,.32),
++    inset 0 0 0 1px rgba(255,255,255,.055);
++}
++
++
++/* The little planet folds into the deployed capsule. */
++
++#planetarium-transport-v3[
++  data-open="true"
++]
++#planetarium-transport-lens {
++  opacity: .18;
++
++  transform:
++    translateX(-2px)
++    scale(.62);
++}
++
++#planetarium-transport-v3[
++  data-open="true"
++]
++#planetarium-transport-lens::after {
++  opacity: 0;
++}
++
++
++/* ------------------------------------------------------------
++   CONTROL PAYLOAD
++   ------------------------------------------------------------ */
++
++#planetarium-transport-controls {
++  position: absolute;
++
++  left: 6px;
++  top: 4px;
++
++  display: flex;
++  align-items: center;
++
++  width: 116px;
++  height: 32px;
++
++  opacity: 0;
++
++  pointer-events: none;
++
++  transform:
++    translateX(22px)
++    scale(.86);
++
++  transition:
++    opacity 100ms ease,
++    transform 160ms cubic-bezier(.18,.9,.24,1);
++}
++
++#planetarium-transport-v3[
++  data-open="true"
++]
++#planetarium-transport-controls {
++  opacity: 1;
++
++  pointer-events: auto;
++
++  transform: none;
++
++  transition-delay: 35ms;
++}
++
++
++/* ------------------------------------------------------------
++   BUTTONS
++   ------------------------------------------------------------ */
++
++.planetarium-window-button {
++  appearance: none;
++
++  width: 36px;
++  height: 31px;
++
++  min-width: 36px;
++
++  margin: 0 1px;
++  padding: 0;
++
++  border: 0;
++  border-radius: 14px;
++
++  background: transparent;
++
++  color:
++    rgba(240,247,255,.94);
++
++  font:
++    500 16px/1 system-ui;
++
++  cursor: default;
++
++  transition:
++    background 90ms ease,
++    box-shadow 90ms ease,
++    transform 75ms ease;
++}
++
++.planetarium-window-button:hover {
++  background:
++    rgba(255,255,255,.09);
++
++  box-shadow:
++    inset 0 0 0 1px
++    rgba(255,255,255,.05);
++}
++
++.planetarium-window-button:active {
++  transform: scale(.86);
++}
++
++.planetarium-window-button.planetarium-close:hover {
++  background:
++    rgba(255, 47, 101, .31);
++
++  box-shadow:
++    0 0 12px
++    rgba(255, 47, 101, .15);
++}
++
++
++/* ------------------------------------------------------------
++   MAX / RESTORE
++   ------------------------------------------------------------ */
++
++:root[sizemode="normal"]
++  #planetarium-restore {
++  display: none;
++}
++
++:root:is(
++  [sizemode="maximized"],
++  [sizemode="fullscreen"]
++)
++  #planetarium-maximize {
++  display: none;
++}
++
++
++/* ------------------------------------------------------------
++   DOM FULLSCREEN
++   ------------------------------------------------------------ */
++
++:root[inDOMFullscreen]
++  #planetarium-transport-v3,
++:root[inDOMFullscreen]
++  #planetarium-window-drag-strip {
++  display: none;
++}
++
++
++/* ------------------------------------------------------------
++   REDUCED MOTION
++   ------------------------------------------------------------ */
++
++@media (prefers-reduced-motion: reduce) {
++  #planetarium-transport-v3,
++  #planetarium-transport-lens,
++  #planetarium-transport-controls,
++  .planetarium-window-button {
++    transition: none;
++  }
++}
+-- 
+2.55.0.windows.3
