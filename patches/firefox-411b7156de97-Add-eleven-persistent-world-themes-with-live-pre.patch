@@ -1,0 +1,1689 @@
+From 411b7156de97e4707e79f9cfbebd44ee2febd97b Mon Sep 17 00:00:00 2001
+From: ColorsOfFractals <ohhhiknowthisone@gmail.com>
+Date: Sun, 13 Sep 2026 02:29:06 -0700
+Subject: [PATCH] Planetarium: add eleven persistent world themes
+
+---
+ .../components/Planetarium/Planetarium.jsx    | 151 +++-
+ .../Planetarium.jsx.pre-eleven-worlds         | 300 +++++++
+ .../components/Planetarium/Planetarium.scss   | 778 ++++++++++++++++++
+ .../Planetarium.scss.pre-eleven-worlds        | 398 +++++++++
+ 4 files changed, 1626 insertions(+), 1 deletion(-)
+ create mode 100644 browser/extensions/newtab/content-src/components/Planetarium/Planetarium.jsx.pre-eleven-worlds
+ create mode 100644 browser/extensions/newtab/content-src/components/Planetarium/Planetarium.scss.pre-eleven-worlds
+
+diff --git a/browser/extensions/newtab/content-src/components/Planetarium/Planetarium.jsx b/browser/extensions/newtab/content-src/components/Planetarium/Planetarium.jsx
+index f4146d1df22f..48c6dc75b3e9 100644
+--- a/browser/extensions/newtab/content-src/components/Planetarium/Planetarium.jsx
++++ b/browser/extensions/newtab/content-src/components/Planetarium/Planetarium.jsx
+@@ -166,7 +166,76 @@ function savePlanetariumEditMode(enabled) {
+   } catch (_) {}
+ }
+ 
++
++/* ============================================================
++   PLANETARIUM_ELEVEN_WORLDS
++   ============================================================ */
++
++const PLANETARIUM_THEME_KEY = "planetarium.theme.v1";
++
++const PLANETARIUM_THEMES = [
++  { id: "sun",          name: "Sun",           glyph: "ΓÿÇ" },
++  { id: "mercury",      name: "Mercury",       glyph: "Γÿ┐" },
++  { id: "venus",        name: "Venus",         glyph: "ΓÖÇ" },
++  { id: "earth",        name: "Earth",         glyph: "ΓùÅ" },
++  { id: "mars",         name: "Mars",          glyph: "ΓÖé" },
++  { id: "jupiter",      name: "Jupiter",       glyph: "ΓÖâ" },
++  { id: "saturn",       name: "Saturn",        glyph: "ΓÖä" },
++  { id: "uranus",       name: "Uranus",        glyph: "ΓÖà" },
++  { id: "neptune",      name: "Neptune",       glyph: "ΓÖå" },
++  { id: "pluto",        name: "Pluto",         glyph: "ΓÖç" },
++  { id: "event-horizon",name: "Event Horizon", glyph: "Γùë" },
++];
++
++function loadPlanetariumTheme() {
++  try {
++    const stored = localStorage.getItem(PLANETARIUM_THEME_KEY);
++
++    if (
++      stored &&
++      PLANETARIUM_THEMES.some(theme => theme.id === stored)
++    ) {
++      return stored;
++    }
++  } catch (_) {}
++
++  return "neptune";
++}
++
++function savePlanetariumTheme(theme) {
++  try {
++    localStorage.setItem(
++      PLANETARIUM_THEME_KEY,
++      theme
++    );
++  } catch (_) {}
++}
++
+ export function Planetarium() {
++  const [activeTheme, setActiveTheme] =
++    React.useState(loadPlanetariumTheme);
++
++  const [previewTheme, setPreviewTheme] =
++    React.useState(null);
++
++  const [themePickerOpen, setThemePickerOpen] =
++    React.useState(false);
++
++  const displayedTheme =
++    previewTheme || activeTheme;
++
++  const currentTheme =
++    PLANETARIUM_THEMES.find(
++      theme => theme.id === activeTheme
++    ) || PLANETARIUM_THEMES[8];
++
++  const choosePlanetariumTheme = theme => {
++    setActiveTheme(theme);
++    setPreviewTheme(null);
++    savePlanetariumTheme(theme);
++    setThemePickerOpen(false);
++  };
++
+   const [constellationMode, setConstellationMode] =
+     React.useState(loadPlanetariumEditMode);
+ 
+@@ -182,6 +251,8 @@ export function Planetarium() {
+     <section
+       className="planetarium-orbit"
+       aria-label="Planetarium"
++      
++      data-planetarium-theme={displayedTheme}
+       data-constellation-mode={constellationMode ? "true" : "false"}
+     >
+       <div className="planetarium-stars" aria-hidden="true" />
+@@ -281,7 +352,85 @@ export function Planetarium() {
+         ))}
+       </div>
+     
+-        <button
++        
++        <div
++          className="planetarium-theme-control"
++          data-open={themePickerOpen ? "true" : "false"}
++          onMouseLeave={() => setPreviewTheme(null)}
++        >
++          {themePickerOpen && (
++            <div
++              className="planetarium-theme-picker"
++              role="menu"
++              aria-label="Planetarium themes"
++            >
++              <div className="planetarium-theme-picker-title">
++                Choose a world
++              </div>
++
++              <div className="planetarium-theme-grid">
++                {PLANETARIUM_THEMES.map(theme => (
++                  <button
++                    key={theme.id}
++                    type="button"
++                    className="planetarium-theme-world"
++                    data-theme={theme.id}
++                    data-selected={
++                      activeTheme === theme.id
++                        ? "true"
++                        : "false"
++                    }
++                    title={theme.name}
++                    aria-label={theme.name}
++                    onMouseEnter={() =>
++                      setPreviewTheme(theme.id)
++                    }
++                    onFocus={() =>
++                      setPreviewTheme(theme.id)
++                    }
++                    onMouseLeave={() =>
++                      setPreviewTheme(null)
++                    }
++                    onBlur={() =>
++                      setPreviewTheme(null)
++                    }
++                    onClick={() =>
++                      choosePlanetariumTheme(theme.id)
++                    }
++                  >
++                    <span className="planetarium-theme-world-glyph">
++                      {theme.glyph}
++                    </span>
++
++                    <span className="planetarium-theme-world-name">
++                      {theme.name}
++                    </span>
++                  </button>
++                ))}
++              </div>
++            </div>
++          )}
++
++          <button
++            type="button"
++            className="planetarium-theme-toggle"
++            data-active={themePickerOpen ? "true" : "false"}
++            onClick={() =>
++              setThemePickerOpen(current => !current)
++            }
++            aria-expanded={themePickerOpen}
++            aria-label="Choose Planetarium theme"
++          >
++            <span className="planetarium-theme-toggle-glyph">
++              {currentTheme.glyph}
++            </span>
++
++            <span>
++              {currentTheme.name}
++            </span>
++          </button>
++        </div>
++<button
+           type="button"
+           className="planetarium-constellation-toggle"
+           data-active={constellationMode ? "true" : "false"}
+diff --git a/browser/extensions/newtab/content-src/components/Planetarium/Planetarium.jsx.pre-eleven-worlds b/browser/extensions/newtab/content-src/components/Planetarium/Planetarium.jsx.pre-eleven-worlds
+new file mode 100644
+index 000000000000..f4146d1df22f
+--- /dev/null
++++ b/browser/extensions/newtab/content-src/components/Planetarium/Planetarium.jsx.pre-eleven-worlds
+@@ -0,0 +1,300 @@
++/* This Source Code Form is subject to the terms of the Mozilla Public
++ * License, v. 2.0. */
++
++import React from "react";
++
++const bodies = [
++  { name: "YouTube", glyph: "Γû╢", orbit: 1, angle: 0 },
++  { name: "Wikipedia", glyph: "W", orbit: 1, angle: 90 },
++  { name: "Reddit", glyph: "ΓùÅ", orbit: 1, angle: 180 },
++  { name: "GitHub", glyph: "Γîÿ", orbit: 1, angle: 270 },
++  { name: "Music", glyph: "ΓÖ½", orbit: 2, angle: 45 },
++  { name: "Museum", glyph: "Γ£ª", orbit: 2, angle: 135 },
++  { name: "Mail", glyph: "Γ£ë", orbit: 2, angle: 225 },
++  { name: "Web", glyph: "Γê₧", orbit: 2, angle: 315 },
++];
++
++
++/* PLANETARIUM_FREEFORM_DRAG */
++
++const PLANETARIUM_POSITION_KEY = "planetarium.orb.positions.v1";
++
++function loadPlanetariumPositions() {
++  try {
++    return JSON.parse(
++      localStorage.getItem(PLANETARIUM_POSITION_KEY) || "{}"
++    );
++  } catch (_) {
++    return {};
++  }
++}
++
++function savePlanetariumPosition(name, x, y) {
++  try {
++    const saved = loadPlanetariumPositions();
++
++    saved[name] = { x, y };
++
++    localStorage.setItem(
++      PLANETARIUM_POSITION_KEY,
++      JSON.stringify(saved)
++    );
++  } catch (_) {}
++}
++
++function getPlanetariumPosition(body) {
++  const saved = loadPlanetariumPositions();
++  return saved[body.name] || null;
++}
++
++function beginPlanetariumFreeDrag(event, body) {
++  const system = event.currentTarget.closest(".planetarium-system");
++
++  if (
++    event.button !== 0 ||
++    !system ||
++    system.dataset.constellationMode !== "true"
++  ) {
++    return;
++  }
++
++  const planet = event.currentTarget;
++
++  const systemRect = system.getBoundingClientRect();
++  const planetRect = planet.getBoundingClientRect();
++
++  const startPointerX = event.clientX;
++  const startPointerY = event.clientY;
++
++  const startX =
++    planetRect.left -
++    systemRect.left +
++    planetRect.width / 2;
++
++  const startY =
++    planetRect.top -
++    systemRect.top +
++    planetRect.height / 2;
++
++  let moved = false;
++  let lastX = startX;
++  let lastY = startY;
++
++  const move = pointerEvent => {
++    const dx = pointerEvent.clientX - startPointerX;
++    const dy = pointerEvent.clientY - startPointerY;
++
++    if (Math.hypot(dx, dy) > 3) {
++      moved = true;
++      planet.dataset.planetariumDragged = "true";
++      planet.classList.add("planetarium-dragging");
++    }
++
++    if (!moved) {
++      return;
++    }
++
++    lastX = startX + dx;
++    lastY = startY + dy;
++
++    planet.style.left = `${lastX}px`;
++    planet.style.top = `${lastY}px`;
++    planet.style.transform = "translate(-50%, -50%)";
++  };
++
++  const finish = pointerEvent => {
++    if (moved) {
++      savePlanetariumPosition(
++        body.name,
++        lastX,
++        lastY
++      );
++
++      window.setTimeout(() => {
++        delete planet.dataset.planetariumDragged;
++      }, 0);
++    }
++
++    planet.classList.remove("planetarium-dragging");
++
++    try {
++      planet.releasePointerCapture(pointerEvent.pointerId);
++    } catch (_) {}
++
++    planet.removeEventListener("pointermove", move);
++    planet.removeEventListener("pointerup", finish);
++    planet.removeEventListener("pointercancel", finish);
++  };
++
++  try {
++    planet.setPointerCapture(event.pointerId);
++  } catch (_) {}
++
++  planet.addEventListener("pointermove", move);
++  planet.addEventListener("pointerup", finish);
++  planet.addEventListener("pointercancel", finish);
++}
++
++function suppressPlanetariumDragClick(event) {
++  if (
++    event.currentTarget.dataset.planetariumDragged === "true"
++  ) {
++    event.preventDefault();
++    event.stopPropagation();
++  }
++}
++
++
++/* PLANETARIUM_CONSTELLATION_MODE */
++
++const PLANETARIUM_EDIT_KEY = "planetarium.constellation.edit.v1";
++
++function loadPlanetariumEditMode() {
++  try {
++    return localStorage.getItem(PLANETARIUM_EDIT_KEY) === "true";
++  } catch (_) {
++    return false;
++  }
++}
++
++function savePlanetariumEditMode(enabled) {
++  try {
++    localStorage.setItem(
++      PLANETARIUM_EDIT_KEY,
++      enabled ? "true" : "false"
++    );
++  } catch (_) {}
++}
++
++export function Planetarium() {
++  const [constellationMode, setConstellationMode] =
++    React.useState(loadPlanetariumEditMode);
++
++  const toggleConstellationMode = () => {
++    setConstellationMode(current => {
++      const next = !current;
++      savePlanetariumEditMode(next);
++      return next;
++    });
++  };
++
++  return (
++    <section
++      className="planetarium-orbit"
++      aria-label="Planetarium"
++      data-constellation-mode={constellationMode ? "true" : "false"}
++    >
++      <div className="planetarium-stars" aria-hidden="true" />
++
++      <div
++          className="planetarium-system"
++          data-constellation-mode={constellationMode ? "true" : "false"}
++        >
++        <div className="planetarium-ring planetarium-ring-one" />
++        <div className="planetarium-ring planetarium-ring-two" />
++
++        <form
++          className="planetarium-core planetarium-core-search"
++          onSubmit={event => {
++            event.preventDefault();
++
++            const value =
++              event.currentTarget.elements.planetariumQuery.value.trim();
++
++            if (!value) {
++              return;
++            }
++
++            const hasScheme =
++              /^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(value);
++
++            const looksLikeDomain =
++              /^[^\s]+\.[^\s]+$/.test(value);
++
++            const looksLikeIP =
++              /^(?:\d{1,3}\.){3}\d{1,3}(?::\d+)?(?:\/.*)?$/.test(value);
++
++            const looksLikeLocalhost =
++              /^localhost(?::\d+)?(?:\/.*)?$/.test(value);
++
++            let destination;
++
++            if (hasScheme) {
++              destination = value;
++            } else if (
++              looksLikeDomain ||
++              looksLikeIP ||
++              looksLikeLocalhost
++            ) {
++              destination = `https://${value}`;
++            } else {
++              destination =
++                `https://www.google.com/search?q=${encodeURIComponent(value)}`;
++            }
++
++            window.location.assign(destination);
++          }}
++        >
++          <span className="planetarium-core-star" aria-hidden="true">
++            Γ£ª
++          </span>
++
++          <input
++            className="planetarium-core-input"
++            name="planetariumQuery"
++            type="text"
++            autoComplete="off"
++            spellCheck="false"
++            aria-label="Search or enter address"
++            placeholder="Search or enter address"
++          />
++        </form>
++
++        {bodies.map(body => (
++          <div
++            className={`planetarium-body planetarium-orbit-${body.orbit} planetarium-${body.name.toLowerCase()}`}
++            onPointerDown={event =>
++              beginPlanetariumFreeDrag(event, body)
++            }
++            onClickCapture={suppressPlanetariumDragClick}
++            style={(() => {
++              const position = getPlanetariumPosition(body);
++
++              if (position) {
++                return {
++                  left: `${position.x}px`,
++                  top: `${position.y}px`,
++                  transform: "translate(-50%, -50%)",
++                };
++              }
++
++              return {
++                "--planetarium-angle": `${body.angle}deg`,
++              };
++            })()}
++          >
++            <button className="planetarium-body-button" type="button">
++              <span className="planetarium-body-glyph">{body.glyph}</span>
++              <span className="planetarium-body-name">{body.name}</span>
++            </button>
++          </div>
++        ))}
++      </div>
++    
++        <button
++          type="button"
++          className="planetarium-constellation-toggle"
++          data-active={constellationMode ? "true" : "false"}
++          onClick={toggleConstellationMode}
++          aria-pressed={constellationMode}
++        >
++          <span className="planetarium-constellation-glyph">Γ£ª</span>
++          <span>
++            {constellationMode
++              ? "Lock Constellation"
++              : "Constellation Mode"}
++          </span>
++        </button>
++</section>
++  );
++}
+diff --git a/browser/extensions/newtab/content-src/components/Planetarium/Planetarium.scss b/browser/extensions/newtab/content-src/components/Planetarium/Planetarium.scss
+index cbf28666e1af..5dca58229e1b 100644
+--- a/browser/extensions/newtab/content-src/components/Planetarium/Planetarium.scss
++++ b/browser/extensions/newtab/content-src/components/Planetarium/Planetarium.scss
+@@ -396,3 +396,781 @@
+ .planetarium-constellation-toggle {
+   pointer-events: auto !important;
+ }
++
++
++/* ============================================================
++   PLANETARIUM - ELEVEN WORLDS
++   ============================================================ */
++
++
++/* ------------------------------------------------------------
++   DEFAULT VARIABLE CONTRACT
++   ------------------------------------------------------------ */
++
++.planetarium-orbit {
++  --planet-bg: #0c0d12;
++  --planet-surface: #10162d;
++  --planet-surface-2: #172044;
++
++  --planet-orbit: rgba(120, 145, 205, .25);
++
++  --planet-primary: #617cff;
++  --planet-secondary: #b8c7ff;
++
++  --planet-glow: rgba(82, 118, 255, .55);
++  --planet-glow-soft: rgba(105, 92, 255, .18);
++
++  --planet-text: rgba(248, 250, 255, .98);
++  --planet-muted: rgba(194, 202, 226, .72);
++
++  --planet-picker-bg: rgba(10, 12, 24, .94);
++
++  background:
++    radial-gradient(
++      circle at 50% 48%,
++      color-mix(
++        in srgb,
++        var(--planet-primary) 5%,
++        transparent
++      ),
++      transparent 42%
++    ),
++    var(--planet-bg);
++
++  transition:
++    background-color 220ms ease,
++    background 220ms ease;
++}
++
++
++/* ============================================================
++   01 ΓÇö SUN
++   ============================================================ */
++
++.planetarium-orbit[data-planetarium-theme="sun"] {
++  --planet-bg: #130d04;
++  --planet-surface: #261605;
++  --planet-surface-2: #3d2307;
++
++  --planet-orbit: rgba(255, 189, 69, .28);
++
++  --planet-primary: #ffb52e;
++  --planet-secondary: #ffe69f;
++
++  --planet-glow: rgba(255, 176, 38, .72);
++  --planet-glow-soft: rgba(255, 112, 19, .22);
++
++  --planet-picker-bg: rgba(31, 18, 4, .96);
++}
++
++
++/* ============================================================
++   02 ΓÇö MERCURY
++   ============================================================ */
++
++.planetarium-orbit[data-planetarium-theme="mercury"] {
++  --planet-bg: #101114;
++  --planet-surface: #191b20;
++  --planet-surface-2: #292c32;
++
++  --planet-orbit: rgba(190, 196, 207, .22);
++
++  --planet-primary: #aeb4bd;
++  --planet-secondary: #e4e7eb;
++
++  --planet-glow: rgba(181, 190, 202, .46);
++  --planet-glow-soft: rgba(170, 178, 190, .13);
++
++  --planet-picker-bg: rgba(16, 17, 20, .96);
++}
++
++
++/* ============================================================
++   03 ΓÇö VENUS
++   ============================================================ */
++
++.planetarium-orbit[data-planetarium-theme="venus"] {
++  --planet-bg: #160e07;
++  --planet-surface: #2a190b;
++  --planet-surface-2: #43290f;
++
++  --planet-orbit: rgba(232, 166, 78, .27);
++
++  --planet-primary: #e9a64d;
++  --planet-secondary: #ffe0a1;
++
++  --planet-glow: rgba(233, 166, 77, .58);
++  --planet-glow-soft: rgba(217, 120, 48, .19);
++
++  --planet-picker-bg: rgba(30, 18, 8, .96);
++}
++
++
++/* ============================================================
++   04 ΓÇö EARTH
++   ============================================================ */
++
++.planetarium-orbit[data-planetarium-theme="earth"] {
++  --planet-bg: #061116;
++  --planet-surface: #081e2c;
++  --planet-surface-2: #0c3544;
++
++  --planet-orbit: rgba(70, 182, 220, .26);
++
++  --planet-primary: #38a8ff;
++  --planet-secondary: #66e0bd;
++
++  --planet-glow: rgba(56, 168, 255, .60);
++  --planet-glow-soft: rgba(57, 222, 180, .16);
++
++  --planet-picker-bg: rgba(6, 20, 28, .96);
++}
++
++
++/* ============================================================
++   05 ΓÇö MARS
++   ============================================================ */
++
++.planetarium-orbit[data-planetarium-theme="mars"] {
++  --planet-bg: #160906;
++  --planet-surface: #29110b;
++  --planet-surface-2: #421b12;
++
++  --planet-orbit: rgba(221, 101, 70, .28);
++
++  --planet-primary: #db6245;
++  --planet-secondary: #ffb087;
++
++  --planet-glow: rgba(222, 88, 58, .58);
++  --planet-glow-soft: rgba(187, 53, 33, .18);
++
++  --planet-picker-bg: rgba(30, 11, 7, .96);
++}
++
++
++/* ============================================================
++   06 ΓÇö JUPITER
++   ============================================================ */
++
++.planetarium-orbit[data-planetarium-theme="jupiter"] {
++  --planet-bg: #15100c;
++  --planet-surface: #281d15;
++  --planet-surface-2: #412d20;
++
++  --planet-orbit: rgba(210, 163, 125, .26);
++
++  --planet-primary: #d59b6a;
++  --planet-secondary: #f2d0a7;
++
++  --planet-glow: rgba(213, 155, 106, .54);
++  --planet-glow-soft: rgba(178, 111, 72, .16);
++
++  --planet-picker-bg: rgba(27, 19, 13, .96);
++}
++
++
++/* ============================================================
++   07 ΓÇö SATURN
++   ============================================================ */
++
++.planetarium-orbit[data-planetarium-theme="saturn"] {
++  --planet-bg: #14120b;
++  --planet-surface: #252114;
++  --planet-surface-2: #3b341f;
++
++  --planet-orbit: rgba(232, 213, 139, .28);
++
++  --planet-primary: #dfc979;
++  --planet-secondary: #fff0b5;
++
++  --planet-glow: rgba(223, 201, 121, .56);
++  --planet-glow-soft: rgba(218, 188, 95, .15);
++
++  --planet-picker-bg: rgba(27, 24, 14, .96);
++}
++
++
++/* ============================================================
++   08 ΓÇö URANUS
++   ============================================================ */
++
++.planetarium-orbit[data-planetarium-theme="uranus"] {
++  --planet-bg: #061416;
++  --planet-surface: #08262a;
++  --planet-surface-2: #0b3b40;
++
++  --planet-orbit: rgba(113, 228, 237, .26);
++
++  --planet-primary: #67dbe7;
++  --planet-secondary: #bafaff;
++
++  --planet-glow: rgba(103, 219, 231, .58);
++  --planet-glow-soft: rgba(94, 211, 220, .16);
++
++  --planet-picker-bg: rgba(6, 23, 25, .96);
++}
++
++
++/* ============================================================
++   09 ΓÇö NEPTUNE
++   ============================================================ */
++
++.planetarium-orbit[data-planetarium-theme="neptune"] {
++  --planet-bg: #080c18;
++  --planet-surface: #0b1631;
++  --planet-surface-2: #10234c;
++
++  --planet-orbit: rgba(82, 115, 214, .27);
++
++  --planet-primary: #426cff;
++  --planet-secondary: #9db5ff;
++
++  --planet-glow: rgba(66, 108, 255, .68);
++  --planet-glow-soft: rgba(94, 72, 255, .20);
++
++  --planet-picker-bg: rgba(8, 12, 28, .96);
++}
++
++
++/* ============================================================
++   10 ΓÇö PLUTO
++   ============================================================ */
++
++.planetarium-orbit[data-planetarium-theme="pluto"] {
++  --planet-bg: #0e0e11;
++  --planet-surface: #19191e;
++  --planet-surface-2: #28282f;
++
++  --planet-orbit: rgba(183, 178, 179, .20);
++
++  --planet-primary: #b5adad;
++  --planet-secondary: #eee8e2;
++
++  --planet-glow: rgba(181, 173, 173, .42);
++  --planet-glow-soft: rgba(180, 170, 170, .10);
++
++  --planet-picker-bg: rgba(15, 15, 18, .96);
++}
++
++
++/* ============================================================
++   11 ΓÇö EVENT HORIZON
++   ============================================================ */
++
++.planetarium-orbit[data-planetarium-theme="event-horizon"] {
++  --planet-bg: #020203;
++  --planet-surface: #070709;
++  --planet-surface-2: #111014;
++
++  --planet-orbit: rgba(177, 84, 255, .24);
++
++  --planet-primary: #b75cff;
++  --planet-secondary: #ffb347;
++
++  --planet-glow: rgba(183, 92, 255, .76);
++  --planet-glow-soft: rgba(255, 128, 45, .22);
++
++  --planet-picker-bg: rgba(4, 3, 6, .98);
++}
++
++
++/* ============================================================
++   LET EXISTING PLANETARIUM DRINK FROM THE THEME
++   ============================================================ */
++
++.planetarium-ring {
++  border-color:
++    var(--planet-orbit) !important;
++
++  transition:
++    border-color 220ms ease,
++    box-shadow 220ms ease;
++}
++
++
++.planetarium-core-star {
++  background:
++    radial-gradient(
++      circle at 42% 38%,
++      white 0 6%,
++      var(--planet-secondary) 20%,
++      var(--planet-primary) 52%,
++      color-mix(
++        in srgb,
++        var(--planet-primary) 28%,
++        #080912
++      ) 78%
++    ) !important;
++
++  box-shadow:
++    0 0 18px var(--planet-glow),
++    0 0 42px var(--planet-glow-soft),
++    inset 0 0 18px rgba(255,255,255,.20) !important;
++
++  transition:
++    background 220ms ease,
++    box-shadow 220ms ease;
++}
++
++
++.planetarium-body-button {
++  border-color:
++    color-mix(
++      in srgb,
++      var(--planet-primary) 32%,
++      transparent
++    ) !important;
++
++  background:
++    color-mix(
++      in srgb,
++      var(--planet-surface) 90%,
++      transparent
++    ) !important;
++
++  color:
++    var(--planet-text) !important;
++
++  transition:
++    border-color 180ms ease,
++    background 180ms ease,
++    box-shadow 180ms ease,
++    transform 100ms ease;
++}
++
++
++.planetarium-body-button:hover {
++  border-color:
++    color-mix(
++      in srgb,
++      var(--planet-secondary) 76%,
++      transparent
++    ) !important;
++
++  box-shadow:
++    0 0 16px var(--planet-glow),
++    0 0 30px var(--planet-glow-soft) !important;
++}
++
++
++.planetarium-core-search {
++  border-color:
++    color-mix(
++      in srgb,
++      var(--planet-primary) 42%,
++      transparent
++    ) !important;
++
++  background:
++    color-mix(
++      in srgb,
++      var(--planet-surface) 92%,
++      transparent
++    ) !important;
++
++  box-shadow:
++    0 0 28px var(--planet-glow-soft) !important;
++}
++
++
++.planetarium-core-input {
++  color:
++    var(--planet-text) !important;
++}
++
++
++.planetarium-core-input::placeholder {
++  color:
++    var(--planet-muted) !important;
++}
++
++
++/* ============================================================
++   THEME CONTROL ΓÇö BOTTOM RIGHT
++   ============================================================ */
++
++.planetarium-theme-control {
++  position: fixed;
++
++  right: 20px;
++  bottom: 20px;
++
++  z-index: 100;
++
++  display: flex;
++  flex-direction: column;
++  align-items: flex-end;
++
++  gap: 10px;
++}
++
++
++.planetarium-theme-toggle {
++  display: flex;
++  align-items: center;
++
++  gap: 8px;
++
++  min-height: 36px;
++
++  padding:
++    0 16px;
++
++  border:
++    1px solid
++    color-mix(
++      in srgb,
++      var(--planet-primary) 42%,
++      transparent
++    );
++
++  border-radius: 999px;
++
++  background:
++    color-mix(
++      in srgb,
++      var(--planet-surface) 76%,
++      transparent
++    );
++
++  color:
++    var(--planet-muted);
++
++  font:
++    500 14px/1 system-ui;
++
++  backdrop-filter:
++    blur(14px);
++
++  cursor: pointer;
++
++  box-shadow:
++    0 0 0 transparent;
++
++  transition:
++    color 130ms ease,
++    border-color 130ms ease,
++    box-shadow 130ms ease,
++    background 130ms ease,
++    transform 100ms ease;
++}
++
++
++.planetarium-theme-toggle:hover,
++.planetarium-theme-toggle[data-active="true"] {
++  color:
++    var(--planet-text);
++
++  border-color:
++    color-mix(
++      in srgb,
++      var(--planet-secondary) 72%,
++      transparent
++    );
++
++  box-shadow:
++    0 0 15px var(--planet-glow-soft);
++}
++
++
++.planetarium-theme-toggle:active {
++  transform:
++    scale(.96);
++}
++
++
++.planetarium-theme-toggle-glyph {
++  min-width: 18px;
++
++  color:
++    var(--planet-secondary);
++
++  text-align: center;
++
++  font-size: 17px;
++}
++
++
++/* ============================================================
++   FLOATING WORLD PICKER
++   ============================================================ */
++
++.planetarium-theme-picker {
++  width: 376px;
++
++  padding:
++    14px;
++
++  border:
++    1px solid
++    color-mix(
++      in srgb,
++      var(--planet-primary) 28%,
++      transparent
++    );
++
++  border-radius:
++    20px;
++
++  background:
++    var(--planet-picker-bg);
++
++  backdrop-filter:
++    blur(22px);
++
++  box-shadow:
++    0 16px 60px rgba(0,0,0,.42),
++    0 0 32px var(--planet-glow-soft);
++
++  transform-origin:
++    bottom right;
++
++  animation:
++    planetarium-theme-arrive
++    160ms
++    cubic-bezier(.18,.9,.24,1);
++}
++
++
++@keyframes planetarium-theme-arrive {
++  from {
++    opacity: 0;
++
++    transform:
++      translateY(8px)
++      scale(.96);
++  }
++
++  to {
++    opacity: 1;
++    transform: none;
++  }
++}
++
++
++.planetarium-theme-picker-title {
++  padding:
++    2px 5px 11px;
++
++  color:
++    var(--planet-muted);
++
++  font:
++    600 11px/1 system-ui;
++
++  text-transform:
++    uppercase;
++
++  letter-spacing:
++    .14em;
++}
++
++
++.planetarium-theme-grid {
++  display: grid;
++
++  grid-template-columns:
++    repeat(4, 1fr);
++
++  gap: 7px;
++}
++
++
++.planetarium-theme-world {
++  min-height:
++    66px;
++
++  padding:
++    8px 5px;
++
++  display: flex;
++  flex-direction: column;
++  align-items: center;
++  justify-content: center;
++
++  gap: 6px;
++
++  border:
++    1px solid
++    rgba(255,255,255,.07);
++
++  border-radius:
++    14px;
++
++  background:
++    rgba(255,255,255,.025);
++
++  color:
++    var(--planet-muted);
++
++  cursor:
++    pointer;
++
++  transition:
++    transform 110ms ease,
++    background 130ms ease,
++    border-color 130ms ease,
++    box-shadow 130ms ease,
++    color 130ms ease;
++}
++
++
++.planetarium-theme-world:hover,
++.planetarium-theme-world:focus-visible {
++  transform:
++    translateY(-2px)
++    scale(1.025);
++
++  color:
++    var(--planet-text);
++
++  border-color:
++    color-mix(
++      in srgb,
++      var(--planet-primary) 58%,
++      transparent
++    );
++
++  background:
++    color-mix(
++      in srgb,
++      var(--planet-primary) 9%,
++      transparent
++    );
++
++  box-shadow:
++    0 0 15px var(--planet-glow-soft);
++
++  outline: none;
++}
++
++
++.planetarium-theme-world[
++  data-selected="true"
++] {
++  border-color:
++    var(--planet-primary);
++
++  color:
++    var(--planet-text);
++
++  box-shadow:
++    inset 0 0 0 1px
++      color-mix(
++        in srgb,
++        var(--planet-primary) 28%,
++        transparent
++      ),
++    0 0 13px var(--planet-glow-soft);
++}
++
++
++.planetarium-theme-world-glyph {
++  font-size:
++    22px;
++
++  color:
++    var(--planet-secondary);
++
++  text-shadow:
++    0 0 10px
++    var(--planet-glow);
++}
++
++
++.planetarium-theme-world-name {
++  max-width:
++    74px;
++
++  overflow:
++    hidden;
++
++  text-overflow:
++    ellipsis;
++
++  white-space:
++    nowrap;
++
++  font:
++    500 11px/1 system-ui;
++}
++
++
++/* Event Horizon gets to be mildly unreasonable. */
++
++.planetarium-theme-world[
++  data-theme="event-horizon"
++]
++.planetarium-theme-world-glyph {
++  color:
++    #050507;
++
++  text-shadow:
++    0 0 5px #ffae42,
++    0 0 10px #ba58ff,
++    0 0 18px #7b35ff;
++}
++
++
++/* ============================================================
++   THEME + CONSTELLATION SYMMETRY
++   ============================================================ */
++
++.planetarium-theme-toggle,
++.planetarium-constellation-toggle {
++  user-select:
++    none;
++}
++
++
++@media (max-width: 760px) {
++  .planetarium-theme-picker {
++    width:
++      min(360px, calc(100vw - 40px));
++  }
++
++  .planetarium-theme-grid {
++    grid-template-columns:
++      repeat(3, 1fr);
++  }
++}
++
++
++@media (prefers-reduced-motion: reduce) {
++  .planetarium-theme-picker,
++  .planetarium-theme-world,
++  .planetarium-theme-toggle,
++  .planetarium-ring,
++  .planetarium-core-star,
++  .planetarium-body-button {
++    animation:
++      none !important;
++
++    transition:
++      none !important;
++  }
++}
++
++
++/* PLANETARIUM - THEME CONTROL POINTER FIX */
++
++.planetarium-theme-control {
++  pointer-events: auto !important;
++  z-index: 2147482000 !important;
++}
++
++.planetarium-theme-toggle {
++  pointer-events: auto !important;
++  position: relative !important;
++  z-index: 2 !important;
++}
++
++.planetarium-theme-picker {
++  pointer-events: auto !important;
++  position: relative !important;
++  z-index: 3 !important;
++}
++
++.planetarium-theme-world {
++  pointer-events: auto !important;
++}
+diff --git a/browser/extensions/newtab/content-src/components/Planetarium/Planetarium.scss.pre-eleven-worlds b/browser/extensions/newtab/content-src/components/Planetarium/Planetarium.scss.pre-eleven-worlds
+new file mode 100644
+index 000000000000..cbf28666e1af
+--- /dev/null
++++ b/browser/extensions/newtab/content-src/components/Planetarium/Planetarium.scss.pre-eleven-worlds
+@@ -0,0 +1,398 @@
++.planetarium-orbit {
++  position: absolute;
++  inset: 0;
++  overflow: hidden;
++  pointer-events: none;
++}
++
++.planetarium-stars {
++  position: absolute;
++  inset: 0;
++  opacity: 0.35;
++  background-image:
++    radial-gradient(circle at 18% 22%, white 0 1px, transparent 1.5px),
++    radial-gradient(circle at 72% 18%, white 0 1px, transparent 1.5px),
++    radial-gradient(circle at 84% 67%, white 0 1px, transparent 1.5px),
++    radial-gradient(circle at 31% 76%, white 0 1px, transparent 1.5px),
++    radial-gradient(circle at 57% 42%, white 0 1px, transparent 1.5px);
++}
++
++.planetarium-system {
++  position: absolute;
++  width: 720px;
++  height: 720px;
++  left: 50%;
++  top: 50%;
++  transform: translate(-50%, -50%);
++}
++
++.planetarium-ring {
++  position: absolute;
++  left: 50%;
++  top: 50%;
++  border: 1px solid rgba(165, 190, 255, 0.18);
++  border-radius: 50%;
++  transform: translate(-50%, -50%);
++}
++
++.planetarium-ring-one {
++  width: 390px;
++  height: 390px;
++}
++
++.planetarium-ring-two {
++  width: 610px;
++  height: 610px;
++}
++
++.planetarium-core {
++  position: absolute;
++  left: 50%;
++  top: 50%;
++  width: 88px;
++  height: 88px;
++  display: grid;
++  place-items: center;
++  transform: translate(-50%, -50%);
++  border-radius: 50%;
++  font-size: 32px;
++  color: #fff;
++  background: radial-gradient(circle, #ffffff 0%, #9ebcff 18%, #5364cf 45%, #191d43 72%);
++  box-shadow:
++    0 0 24px rgba(150, 180, 255, 0.8),
++    0 0 70px rgba(90, 110, 255, 0.35);
++}
++
++.planetarium-body {
++  --planetarium-radius: 195px;
++
++  position: absolute;
++  left: 50%;
++  top: 50%;
++  transform:
++    rotate(var(--planetarium-angle))
++    translateX(var(--planetarium-radius))
++    rotate(calc(-1 * var(--planetarium-angle)));
++}
++
++.planetarium-orbit-2 {
++  --planetarium-radius: 305px;
++}
++
++.planetarium-body-button {
++  pointer-events: auto;
++  width: 74px;
++  min-height: 74px;
++  display: grid;
++  place-items: center;
++  gap: 3px;
++  padding: 8px;
++  border: 1px solid rgba(180, 200, 255, 0.24);
++  border-radius: 50%;
++  color: #eef2ff;
++  background: rgba(16, 20, 48, 0.82);
++  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.28);
++  cursor: pointer;
++}
++
++.planetarium-body-glyph {
++  font-size: 20px;
++  line-height: 1;
++}
++
++.planetarium-body-name {
++  font-size: 9px;
++  letter-spacing: 0.04em;
++}
++
++.planetarium-body-button:hover {
++  transform: scale(1.12);
++  border-color: rgba(220, 230, 255, 0.7);
++  box-shadow:
++    0 8px 30px rgba(0, 0, 0, 0.28),
++    0 0 24px rgba(120, 150, 255, 0.35);
++}
++
++@media (prefers-reduced-motion: reduce) {
++  .planetarium-body-button {
++    transition: none;
++  }
++}
++
++
++/* ============================================================
++   PLANETARIUM ΓÇö NAVIGATION CORE
++   The star is the address bar.
++   ============================================================ */
++
++.planetarium-core-search {
++  pointer-events: auto;
++  overflow: hidden;
++  transition:
++    width 220ms ease,
++    height 220ms ease,
++    border-radius 220ms ease,
++    background 220ms ease,
++    box-shadow 220ms ease;
++}
++
++.planetarium-core-star {
++  position: relative;
++  z-index: 2;
++  pointer-events: none;
++  font-size: 32px;
++  transition:
++    transform 220ms ease,
++    left 220ms ease;
++}
++
++.planetarium-core-input {
++  position: absolute;
++  inset: 0;
++  z-index: 3;
++
++  width: 100%;
++  height: 100%;
++  box-sizing: border-box;
++
++  border: 0;
++  outline: 0;
++  padding: 0;
++
++  color: transparent;
++  caret-color: transparent;
++  background: transparent;
++
++  opacity: 0;
++  cursor: text;
++  font: inherit;
++}
++
++.planetarium-core-search:focus-within {
++  width: 440px;
++  height: 62px;
++  border-radius: 32px;
++
++  background:
++    radial-gradient(circle at 8% 50%, #5364cf 0%, #242a68 12%, #11152e 32%),
++    rgba(12, 15, 34, 0.96);
++
++  box-shadow:
++    0 0 24px rgba(150, 180, 255, 0.55),
++    0 0 80px rgba(90, 110, 255, 0.28);
++}
++
++.planetarium-core-search:focus-within .planetarium-core-star {
++  position: absolute;
++  left: 21px;
++  transform: scale(0.72);
++}
++
++.planetarium-core-search:focus-within .planetarium-core-input {
++  opacity: 1;
++  padding: 0 26px 0 62px;
++
++  color: #f5f7ff;
++  caret-color: #ffffff;
++
++  font-size: 15px;
++  letter-spacing: 0.01em;
++}
++
++.planetarium-core-input::placeholder {
++  color: rgba(218, 225, 255, 0.48);
++}
++
++.planetarium-core-search:focus-within ~ .planetarium-body {
++  opacity: 0.58;
++}
++
++@media (prefers-reduced-motion: reduce) {
++  .planetarium-core-search,
++  .planetarium-core-star {
++    transition: none;
++  }
++}
++
++
++
++
++
++
++
++
++
++/* PLANETARIUM - OPTICAL ORB CALIBRATION */
++
++.planetarium-github {
++  margin-left: -10px !important;
++}
++
++.planetarium-reddit {
++  margin-left: -5px !important;
++}
++
++.planetarium-youtube {
++  margin-left: -5px !important;
++}
++
++.planetarium-wikipedia {
++  margin-top: -5px !important;
++}
++
++.planetarium-music {
++  margin-left: -10px !important;
++  margin-top: -10px !important;
++}
++
++.planetarium-mail {
++  margin-left: -10px !important;
++  margin-top: -10px !important;
++}
++
++/* ============================================================
++   PLANETARIUM - DRAGGABLE ORBITS
++   ============================================================ */
++
++.planetarium-body {
++  cursor: grab;
++  user-select: none;
++  touch-action: none;
++}
++
++.planetarium-body.planetarium-dragging {
++  cursor: grabbing;
++  z-index: 50;
++}
++
++.planetarium-body.planetarium-dragging .planetarium-body-button {
++  transform: scale(1.14);
++  border-color: rgba(210, 225, 255, 0.9);
++
++  box-shadow:
++    0 0 16px rgba(120, 185, 255, 0.48),
++    0 0 32px rgba(105, 95, 255, 0.28);
++}
++
++.planetarium-body.planetarium-dragging .planetarium-body-name {
++  opacity: 1;
++}
++
++/* ============================================================
++   PLANETARIUM - FREEFORM POSITIONING
++   Rings are visual guides only.
++   ============================================================ */
++
++.planetarium-body {
++  cursor: grab;
++}
++
++.planetarium-body.planetarium-dragging {
++  cursor: grabbing;
++  z-index: 100;
++}
++
++/* ============================================================
++   PLANETARIUM - CONSTELLATION MODE
++   ============================================================ */
++
++.planetarium-constellation-toggle {
++  position: fixed;
++  left: 20px;
++  bottom: 20px;
++
++  display: flex;
++  align-items: center;
++  gap: 8px;
++
++  min-height: 36px;
++  padding: 0 14px;
++
++  border: 1px solid rgba(120, 160, 255, 0.28);
++  border-radius: 999px;
++
++  background: rgba(8, 10, 25, 0.72);
++  color: rgba(225, 232, 255, 0.76);
++
++  font: inherit;
++  font-size: 12px;
++
++  backdrop-filter: blur(12px);
++
++  cursor: pointer;
++  z-index: 1000;
++
++  transition:
++    border-color 140ms ease,
++    box-shadow 140ms ease,
++    color 140ms ease,
++    transform 140ms ease;
++}
++
++.planetarium-constellation-toggle:hover {
++  transform: translateY(-1px);
++  color: white;
++  border-color: rgba(130, 205, 255, 0.6);
++}
++
++.planetarium-constellation-toggle[data-active="true"] {
++  color: white;
++
++  border-color: rgba(125, 210, 255, 0.8);
++
++  box-shadow:
++    0 0 14px rgba(80, 190, 255, 0.24),
++    0 0 26px rgba(125, 90, 255, 0.18);
++}
++
++.planetarium-constellation-glyph {
++  font-size: 16px;
++}
++
++
++/* Locked by default. */
++
++.planetarium-body {
++  cursor: pointer;
++}
++
++
++/* Editing mode = the sky becomes movable. */
++
++[data-constellation-mode="true"] .planetarium-body {
++  cursor: grab;
++}
++
++[data-constellation-mode="true"]
++.planetarium-body:active {
++  cursor: grabbing;
++}
++
++
++/* Give the orbital guides a little life while editing. */
++
++[data-constellation-mode="true"]
++.planetarium-ring {
++  border-color: rgba(150, 195, 255, 0.34);
++
++  box-shadow:
++    0 0 20px rgba(80, 130, 255, 0.035);
++}
++
++
++/* Tiny visual cue that an orb is editable. */
++
++[data-constellation-mode="true"]
++.planetarium-body-button:hover {
++  border-color: rgba(210, 230, 255, 0.85);
++
++  box-shadow:
++    0 0 16px rgba(100, 180, 255, 0.24),
++    0 0 28px rgba(120, 90, 255, 0.12);
++}
++
++/* PLANETARIUM - CONSTELLATION MODE POINTER FIX */
++
++.planetarium-constellation-toggle {
++  pointer-events: auto !important;
++}
+-- 
+2.55.0.windows.3

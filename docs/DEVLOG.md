@@ -85,3 +85,42 @@ Firefox checkpoint recorded from the active development workbench.
 ```
 
 ---
+
+
+## 2026-09-13 02:29:13 — Add eleven persistent world themes with live preview and saved selection
+
+Firefox checkpoint recorded from the active development workbench.
+
+- Branch: planetarium
+- Commit: 411b7156de97e4707e79f9cfbebd44ee2febd97b
+- Subject: Planetarium: add eleven persistent world themes
+- Patch: patches/firefox-411b7156de97-Add-eleven-persistent-world-themes-with-live-pre.patch
+
+### Recent Firefox checkpoints
+
+```text
+411b7156de97 Planetarium: add eleven persistent world themes
+32453cc9e4c7 Restore Planetarium on clean Firefox artifact build
+69ffea2ae1dd Planetarium: establish borderless chrome and orbital window control
+297af50f5fda Planetarium: collapse vertical sidebar into invisible edge rail
+5145c41d5a37 Planetarium: establish orbital new tab and native vertical sidebar shell
+```
+
+### Firefox tree state
+
+```text
+[clean]
+```
+
+### Checkpoint contents
+
+```text
+411b7156de97 Planetarium: add eleven persistent world themes
+ .../components/Planetarium/Planetarium.jsx         | 151 +++-
+ .../Planetarium/Planetarium.jsx.pre-eleven-worlds  | 300 ++++++++
+ .../components/Planetarium/Planetarium.scss        | 778 +++++++++++++++++++++
+ .../Planetarium/Planetarium.scss.pre-eleven-worlds | 398 +++++++++++
+ 4 files changed, 1626 insertions(+), 1 deletion(-)
+```
+
+---
