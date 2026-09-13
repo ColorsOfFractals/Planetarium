@@ -1,0 +1,121 @@
+From 3fa0e66b246501be620177e8b436ea03fd9c6d67 Mon Sep 17 00:00:00 2001
+From: ColorsOfFractals <ohhhiknowthisone@gmail.com>
+Date: Sun, 13 Sep 2026 02:35:17 -0700
+Subject: [PATCH] Finish Planetarium world themes and deployable navigation
+ core
+
+---
+ .../components/Planetarium/Planetarium.scss   | 101 ++++++++++++++++++
+ 1 file changed, 101 insertions(+)
+
+diff --git a/browser/extensions/newtab/content-src/components/Planetarium/Planetarium.scss b/browser/extensions/newtab/content-src/components/Planetarium/Planetarium.scss
+index 5dca58229e1b..980e30559fa2 100644
+--- a/browser/extensions/newtab/content-src/components/Planetarium/Planetarium.scss
++++ b/browser/extensions/newtab/content-src/components/Planetarium/Planetarium.scss
+@@ -1174,3 +1174,104 @@
+ .planetarium-theme-world {
+   pointer-events: auto !important;
+ }
++
++
++/* ============================================================
++   PLANETARIUM - THEMED CORE ORB REPAIR
++   The planet belongs to the CORE, not the star glyph.
++   ============================================================ */
++
++
++/* ------------------------------------------------------------
++   COLLAPSED STATE = actual themed planet
++   ------------------------------------------------------------ */
++
++.planetarium-core-search:not(:focus-within) {
++  width: 88px !important;
++  height: 88px !important;
++
++  border-radius: 50% !important;
++
++  background:
++    radial-gradient(
++      circle at 38% 32%,
++      rgba(255,255,255,.98) 0 4%,
++      var(--planet-secondary) 10%,
++      var(--planet-primary) 34%,
++      color-mix(
++        in srgb,
++        var(--planet-primary) 58%,
++        #101329
++      ) 62%,
++      color-mix(
++        in srgb,
++        var(--planet-primary) 24%,
++        #050711
++      ) 84%
++    ) !important;
++
++  box-shadow:
++    0 0 14px var(--planet-glow),
++    0 0 34px var(--planet-glow-soft),
++    0 0 54px
++      color-mix(
++        in srgb,
++        var(--planet-glow) 22%,
++        transparent
++      ),
++    inset 0 0 14px rgba(255,255,255,.20) !important;
++
++  overflow: hidden;
++
++  transition:
++    width 220ms cubic-bezier(.18,.9,.24,1),
++    height 220ms cubic-bezier(.18,.9,.24,1),
++    border-radius 220ms cubic-bezier(.18,.9,.24,1),
++    background 220ms ease,
++    box-shadow 220ms ease !important;
++}
++
++
++/* ------------------------------------------------------------
++   STAR = only the white navigation glyph again
++   ------------------------------------------------------------ */
++
++.planetarium-core-star {
++  background: transparent !important;
++  box-shadow: none !important;
++
++  border: 0 !important;
++  border-radius: 0 !important;
++
++  width: auto !important;
++  height: auto !important;
++
++  color: white !important;
++
++  text-shadow:
++    0 0 8px rgba(255,255,255,.72),
++    0 0 16px var(--planet-glow) !important;
++}
++
++
++/* ------------------------------------------------------------
++   DEPLOYED SEARCH = capsule, not giant planet
++   ------------------------------------------------------------ */
++
++.planetarium-core-search:focus-within {
++  background:
++    color-mix(
++      in srgb,
++      var(--planet-surface) 94%,
++      transparent
++    ) !important;
++
++  box-shadow:
++    0 0 24px var(--planet-glow-soft),
++    inset 0 0 0 1px
++      color-mix(
++        in srgb,
++        var(--planet-primary) 16%,
++        transparent
++      ) !important;
++}
+-- 
+2.55.0.windows.3

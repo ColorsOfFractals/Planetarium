@@ -124,3 +124,46 @@ Firefox checkpoint recorded from the active development workbench.
 ```
 
 ---
+
+
+## 2026-09-13 04:05:32 — Add persistent Dimensions toggle for Planetarium extension bay
+
+Firefox checkpoint recorded from the active development workbench.
+
+- Branch: planetarium
+- Commit: 3fa0e66b246501be620177e8b436ea03fd9c6d67
+- Subject: Finish Planetarium world themes and deployable navigation core
+- Patch: patches/firefox-3fa0e66b2465-Add-persistent-Dimensions-toggle-for-Planetarium.patch
+
+### Recent Firefox checkpoints
+
+```text
+3fa0e66b2465 Finish Planetarium world themes and deployable navigation core
+411b7156de97 Planetarium: add eleven persistent world themes
+32453cc9e4c7 Restore Planetarium on clean Firefox artifact build
+69ffea2ae1dd Planetarium: establish borderless chrome and orbital window control
+297af50f5fda Planetarium: collapse vertical sidebar into invisible edge rail
+```
+
+### Firefox tree state
+
+```text
+ M browser/base/content/browser.js
+ M browser/components/sidebar/browser-sidebar.js
+ M browser/components/sidebar/sidebar-customize.mjs
+ M browser/components/sidebar/sidebar-main.mjs
+ M browser/themes/shared/browser-shared.css
+?? browser/components/sidebar/browser-sidebar.js.planetarium-native.bak
+?? browser/components/sidebar/browser-sidebar.js.pre-optional-pill.bak
+?? browser/components/sidebar/sidebar-main.mjs.planetarium-native.bak
+```
+
+### Checkpoint contents
+
+```text
+3fa0e66b2465 Finish Planetarium world themes and deployable navigation core
+ .../components/Planetarium/Planetarium.scss        | 101 +++++++++++++++++++++
+ 1 file changed, 101 insertions(+)
+```
+
+---
